@@ -1,0 +1,45 @@
+---
+title: "main"
+output: pdf_document
+date: "2024-06-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Importing dataset and libraries
+```{r setup dell'ambiente}
+
+df= read.table('/Users/alessandroausteri/Desktop/dab_project/BigMartSales.csv',header=TRUE, sep=",")
+
+library(corrplot)
+```
+
+
+Firstly, we are going to fix all features in our dataset, we will start from the feature "Item_Fat_Content".
+
+We can see that there are different names for the same value:
+
+```{r unique values}
+item_fat_content_uniques <- unique(df$Item_Fat_Content)#unique values of item_fat_content
+
+print(item_fat_content_uniques)
+```
+As we can see, we have 2 different names for "Regular Fat" that are "Regular" and "reg"
+and 3 different names for "Low Fat" that are "Low fat", "low fat", "LF"
+
+To solve this problem, we can edit the column "Item_Fat_Content" in this way:
+
+all records that start with R or r, will be renamed "Regular Fat", and other will be renamed "Low Fat".
+
+Then we will print the uniques name of the column after the edit
+
+```{r sistemare nomi item_fat_content}
+df$Item_Fat_Content <- ifelse(grepl("^[Rr]", df$Item_Fat_Content), "Regular Fat", "Low Fat")
+item_fat_content_uniques <- unique(df$Item_Fat_Content)
+
+print(item_fat_content_uniques)
+
+```
+
