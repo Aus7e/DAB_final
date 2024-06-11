@@ -11,9 +11,11 @@ knitr::opts_chunk$set(echo = TRUE)
 Importing dataset and libraries
 ```{r df_import, include=FALSE}
 
-df= read.table('/Users/alessandroausteri/Desktop/dab_project/BigMartSales.csv',header=TRUE, sep=",")
+df= read.table('/Users/lorenzolaterza/Downloads/DAB_final/BigMartSales.csv',header=TRUE, sep=",")
 library(dplyr)
 library(corrplot)
+library(ggplot2)
+library(gridExtra)
 ```
 
 
@@ -83,7 +85,7 @@ Knowing this, we can substitute blank values of "Outlet_Size" of grocery with sm
 df <- df %>%
   mutate(Outlet_Size = case_when(
     Outlet_Type == "Grocery Store" ~ "Small",
-    Outlet_Type %in% c("Supermarket Type2", "Supermarket Type3") ~ "Medium",
+    #Outlet_Type %in% c("Supermarket Type2", "Supermarket Type3") ~ "Medium",
     TRUE ~ Outlet_Size  # Mantiene il valore originale per tutte le altre condizioni
   ))
 
@@ -160,6 +162,74 @@ names(zero_visibility_counts)[2] <- "Zero_Item_Visibility_Count"
 # Display the result
 print(zero_visibility_counts)
 ```
+```{r plots to see outliers}
+# Load necessary libraries
+library(ggplot2)
+library(gridExtra)
+
+# Histogram and Box Plot for Item_Weight
+p1 <- ggplot(df, aes(x = Item_Weight)) + 
+  geom_histogram(binwidth = 1, fill = 'blue', alpha = 0.7) + 
+  ggtitle("Distribution of Item Weight") +
+  xlab("Item Weight") +
+  ylab("Frequency")
+
+p2 <- ggplot(df, aes(x = "", y = Item_Weight)) + 
+  geom_boxplot(fill = 'blue', alpha = 0.7) + 
+  ggtitle("Box Plot of Item Weight") +
+  xlab("") +
+  ylab("Item Weight")
+
+# Histogram and Box Plot for Item_Visibility
+p3 <- ggplot(df, aes(x = Item_Visibility)) + 
+  geom_histogram(binwidth = 0.01, fill = 'green', alpha = 0.7) + 
+  ggtitle("Distribution of Item Visibility") +
+  xlab("Item Visibility") +
+  ylab("Frequency")
+
+p4 <- ggplot(df, aes(x = "", y = Item_Visibility)) + 
+  geom_boxplot(fill = 'green', alpha = 0.7) + 
+  ggtitle("Box Plot of Item Visibility") +
+  xlab("") +
+  ylab("Item Visibility")
+
+# Histogram and Box Plot for Item_MRP
+p5 <- ggplot(df, aes(x = Item_MRP)) + 
+  geom_histogram(binwidth = 5, fill = 'red', alpha = 0.7) + 
+  ggtitle("Distribution of Item MRP") +
+  xlab("Item MRP") +
+  ylab("Frequency")
+
+p6 <- ggplot(df, aes(x = "", y = Item_MRP)) + 
+  geom_boxplot(fill = 'red', alpha = 0.7) + 
+  ggtitle("Box Plot of Item MRP") +
+  xlab("") +
+  ylab("Item MRP")
+
+# Histogram and Box Plot for Item_Outlet_Sales
+p7 <- ggplot(df, aes(x = Item_Outlet_Sales)) + 
+  geom_histogram(binwidth = 100, fill = 'purple', alpha = 0.7) + 
+  ggtitle("Distribution of Item Outlet Sales") +
+  xlab("Item Outlet Sales") +
+  ylab("Frequency")
+
+p8 <- ggplot(df, aes(x = "", y = Item_Outlet_Sales)) + 
+  geom_boxplot(fill = 'purple', alpha = 0.7) + 
+  ggtitle("Box Plot of Item Outlet Sales") +
+  xlab("") +
+  ylab("Item Outlet Sales")
+
+# Print the plots individually
+print(p1)
+print(p2)
+print(p3)
+print(p4)
+print(p5)
+print(p6)
+print(p7)
+print(p8)
+
+```
 
 ```{r count 0 values for each store}
 
@@ -170,27 +240,19 @@ names(visibility_sum_per_store)[2] <- "Total_Item_Visibility"
 print(visibility_sum_per_store)
 ```
 
-```{r total item visibility}
+```{r Visibility}
 total_visibility_per_store <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df[df$Item_Visibility != 0,], sum)
 names(total_visibility_per_store)[2] <- "Total_Item_Visibility"
-```
 
-```{r total item visibility 2}
 remaining_visibility_per_store <- 100 - total_visibility_per_store$Total_Item_Visibility
 remaining_visibility_per_store <- data.frame(Outlet_Identifier = total_visibility_per_store$Outlet_Identifier, Remaining_Visibility = remaining_visibility_per_store)
-```
 
-```{r total item visibility 3}
 zero_visibility_counts <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df, function(x) sum(x == 0))
 names(zero_visibility_counts)[2] <- "Zero_Item_Visibility_Count"
-```
 
-```{r total item visibility 4}
 df <- merge(df, zero_visibility_counts, by = "Outlet_Identifier", all.x = TRUE)
 df <- merge(df, remaining_visibility_per_store, by = "Outlet_Identifier", all.x = TRUE)
-```
 
-```{r total item visibility 5}
 impute_visibility <- function(item_visibility, zero_count, remaining_visibility) {
   if (item_visibility == 0) {
     if (is.na(zero_count) || zero_count == 0) {
@@ -211,10 +273,6 @@ df$Item_Visibility <- mapply(impute_visibility,
                              df$Item_Visibility, 
                              df$Zero_Item_Visibility_Count, 
                              df$Remaining_Visibility)
-
-```
-
-```{r total item visibility 6}
 # Calculate the sum of Item_Visibility for each Outlet_Identifier to verify
 visibility_sum_per_store <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df, sum)
 names(visibility_sum_per_store)[2] <- "Total_Item_Visibility"
@@ -223,6 +281,34 @@ names(visibility_sum_per_store)[2] <- "Total_Item_Visibility"
 print(visibility_sum_per_store)
 ```
 
+```{r visibility plot}
+# Histogram and Box Plot for Item_Visibility
+p3 <- ggplot(df, aes(x = Item_Visibility)) + 
+  geom_histogram(binwidth = 0.01, fill = 'green', alpha = 0.7) + 
+  ggtitle("Distribution of Item Visibility") +
+  xlab("Item Visibility") +
+  ylab("Frequency")
+
+p4 <- ggplot(df, aes(x = "", y = Item_Visibility)) + 
+  geom_boxplot(fill = 'green', alpha = 0.7) + 
+  ggtitle("Box Plot of Item Visibility") +
+  xlab("") +
+  ylab("Item Visibility")
+print(p3)
+print(p4)
+```
 
 
+```{r Removing Duplicates}
+# Check for entire row duplicates
+duplicates_entire_row <- duplicated(df)
 
+# Count the number of entirely duplicated rows
+num_entire_row_duplicates <- sum(duplicates_entire_row)
+print(paste("Number of entirely duplicated rows:", num_entire_row_duplicates))
+
+# View the duplicated rows
+entire_row_duplicate_entries <- df[duplicates_entire_row, ]
+print("Entirely duplicated rows:")
+print(entire_row_duplicate_entries)
+```
