@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Importing dataset and libraries
 ```{r df_import, include=FALSE}
 
-df= read.table('/Users/lorenzolaterza/Downloads/DAB_final/BigMartSales.csv',header=TRUE, sep=",")
+df= read.table("/Users/alessandroausteri/Desktop/dab_project/BigMartSales.csv",header=TRUE, sep=",")
 library(dplyr)
 library(corrplot)
 library(ggplot2)
@@ -260,7 +260,7 @@ impute_visibility <- function(item_visibility, zero_count, remaining_visibility)
     }
     # Check for negative remaining visibility and set to a small positive number if necessary
     if (remaining_visibility < 0) {
-      remaining_visibility <- mean(df$Item_Visibility[df$Item_Visibility != 0], na.rm = TRUE)
+      remaining_visibility <- mean(df$Item_Visibility[df$Item_Visibility != 0]*0.01, na.rm = TRUE)
     }
     return(remaining_visibility / zero_count)
   } else {
@@ -280,6 +280,11 @@ names(visibility_sum_per_store)[2] <- "Total_Item_Visibility"
 # Display the result
 print(visibility_sum_per_store)
 ```
+```{r dropping useless columns}
+df <- df %>%
+  select(-Zero_Item_Visibility_Count, -Remaining_Visibility)
+```
+
 
 ```{r visibility plot}
 # Histogram and Box Plot for Item_Visibility
@@ -311,4 +316,83 @@ print(paste("Number of entirely duplicated rows:", num_entire_row_duplicates))
 entire_row_duplicate_entries <- df[duplicates_entire_row, ]
 print("Entirely duplicated rows:")
 print(entire_row_duplicate_entries)
+```
+
+Now we will start to find out some correlations between variables.
+
+```{R corr matrix}
+
+# Calculate Spearman's rank correlation matrix again if not already calculated
+cor_matrix <- cor(df %>% select(where(is.numeric)), 
+                  method = "spearman", 
+                  use = "pairwise.complete.obs")
+
+# Visualize the correlation matrix with coefficients inside the circles
+corrplot(cor_matrix, method = "circle", type = "upper", order = "hclust",
+         tl.col = "black", tl.srt = 45, tl.cex = 0.8, cl.cex = 0.8,
+         col = colorRampPalette(c("#6BAED6", "#FFFFFF", "#FD8D3C"))(200),
+         addCoef.col = "black",  # Sets color of the coefficients to black (choose based on your color scheme)
+         number.cex = 0.6)  # Adjust coefficient text size appropriately
+
+```
+DOBBIAMO DROPPARE LE COLONNE REMINAINING VISIBILITY EZERO ITEM VISIBILITY COUNT
+
+
+
+We can see that there are big positive relation between:
+
+outlet_size-item visibility
+item_outlet_sales and outlet_size
+item_mrp and item_outlet_sales
+
+```{r item MRP vs Outlet Sales}
+library(ggplot2)
+ggplot(df, aes(x = Item_MRP, y = Item_Outlet_Sales)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "Relationship between Item MRP and Outlet Sales",
+       x = "Item MRP", y = "Outlet Sales")
+```
+```{R item outlet sales by outlet size}
+ggplot(df, aes(x = Outlet_Size, y = Item_Outlet_Sales)) +
+  geom_boxplot(aes(fill = Outlet_Size)) +
+  labs(title = "Item Outlet Sales by Outlet Size",
+       x = "Outlet Size", y = "Outlet Sales")
+```
+
+```{R Sales trends over the years}
+ggplot(df, aes(x = Outlet_Establishment_Year, y = Item_Outlet_Sales)) +
+  geom_point(aes(color = Outlet_Establishment_Year)) +
+  geom_smooth(method = "lm") +
+  labs(title = "Sales Trends Over the Years",
+       x = "Establishment Year", y = "Outlet Sales")
+
+```
+
+```{R Relationship between Item MRP and Outlet Sales by Product Type}
+
+library(dplyr)
+
+df_summary <- df %>%
+  group_by(Item_Type, MRP_Bracket = cut(Item_MRP, breaks = seq(0, max(Item_MRP), by = 20))) %>%
+  summarize(Average_Sales = mean(Item_Outlet_Sales), .groups = 'drop')
+
+ggplot(data = df_summary, aes(x = MRP_Bracket, y = Average_Sales, fill = Item_Type)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Average Outlet Sales by MRP Bracket and Product Type",
+       x = "MRP Bracket",
+       y = "Average Outlet Sales") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+zi qua c'è scritto che più vendi e più alzi il prezzo di base
+
+```{R  Item_Outlet_Sales density plot}
+# Create a density plot
+ggplot(data = df, aes(x = Item_Outlet_Sales)) +
+  geom_density(fill = "turquoise", alpha = 0.5) +  # 'alpha' controls transparency
+  labs(title = "Density Plot of Item Outlet Sales",
+       x = "Item Outlet Sales",
+       y = "Density") +
+  theme_light()
 ```
