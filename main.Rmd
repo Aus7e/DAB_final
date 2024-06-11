@@ -9,10 +9,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Importing dataset and libraries
-```{r setup dell'ambiente}
+```{r df_import, include=FALSE}
 
 df= read.table('/Users/alessandroausteri/Desktop/dab_project/BigMartSales.csv',header=TRUE, sep=",")
-
+library(dplyr)
 library(corrplot)
 ```
 
@@ -42,4 +42,187 @@ item_fat_content_uniques <- unique(df$Item_Fat_Content)
 print(item_fat_content_uniques)
 
 ```
+
+Now we should work on the column "Outlet_Size" since analyzing the dataset manually it's clear that there are many missing values.
+First of all, we should compute the percentage of missing values.
+
+```{r Outlet size analisy}
+#conteggio records senza Outlet_Size:
+null<-sum(nchar(df$Outlet_Size) ==0)
+
+#numero di records
+total<- nrow(df)
+
+print(paste("Number of rows with missing valuess on Outlet_Size:",null))
+
+#percentuale di righe senza outlet_size
+percentuale_stringhe_vuote <- (null / total) * 100
+
+#stampa percentuale di righe senza outlet_size
+
+print(paste("Percentuale di records con stringhe vuote in 'Outlet_Size':", percentuale_stringhe_vuote, "%"))
+```
+
+We want to find out if there are relations between the column "Outlet_Type" and the column "Outlet_Size" creating a table to see the number of combination between the outlet size and the outlet type.
+
+```{r outlet_size and outlet_type}
+# Creazione di una tabella di riepilogo
+outlet_summary <- df %>%
+  filter(Outlet_Size %in% c("Small", "Medium", "High")) %>%  # Filtra per includere solo le righe con i valori specificati
+  group_by(Outlet_Type, Outlet_Size) %>%  # Raggruppa per tipo e dimensione del negozio
+  summarise(Count = n(), .groups = 'drop')  # Calcola il conteggio e rimuove il raggruppamento automatico
+
+# Visualizzazione della tabella di riepilogo
+print(outlet_summary)
+```
+From this tab, we can see that all entries that are "Grocery Store" are small, and all entries that are "Supermarket Type2" or "Supermarket Type3" are Medium.
+Knowing this, we can substitute blank values of "Outlet_Size" of grocery with small, of type2 and type 3 with medium.
+
+```{r updating outlet_size}
+# Aggiornamento della colonna 'Outlet_Size'
+df <- df %>%
+  mutate(Outlet_Size = case_when(
+    Outlet_Type == "Grocery Store" ~ "Small",
+    Outlet_Type %in% c("Supermarket Type2", "Supermarket Type3") ~ "Medium",
+    TRUE ~ Outlet_Size  # Mantiene il valore originale per tutte le altre condizioni
+  ))
+
+# Visualizza le modifiche per confermare
+# Creazione di una tabella di riepilogo
+outlet_summary <- df %>%
+  filter(Outlet_Size %in% c("Small", "Medium", "High")) %>%  # Filtra per includere solo le righe con i valori specificati
+  group_by(Outlet_Type, Outlet_Size) %>%  # Raggruppa per tipo e dimensione del negozio
+  summarise(Count = n(), .groups = 'drop')  # Calcola il conteggio e rimuove il raggruppamento automatico
+
+# Visualizzazione della tabella di riepilogo
+print(outlet_summary)
+
+```
+
+```{r Outlet size analisy 2}
+#conteggio records senza Outlet_Size:
+null<-sum(nchar(df$Outlet_Size) ==0)
+
+#numero di records
+total<- nrow(df)
+
+print(paste("Number of rows with missing valuess on Outlet_Size:",null))
+
+#percentuale di righe senza outlet_size
+percentuale_stringhe_vuote <- (null / total) * 100
+
+#stampa percentuale di righe senza outlet_size
+
+print(paste("Percentuale di records con stringhe vuote in 'Outlet_Size':", percentuale_stringhe_vuote, "%"))
+```
+Dopo aver riempito grocery store, supermarket type2 e supermarket type3, il numero di na è sceso dal 28% al 21%, passando da 2410 valori mancanti a 1855.
+
+Now we will fill the remaining missing values with n/a
+```{r adding na values}
+# Aggiornamento della colonna 'Outlet_Size' per riempire le stringhe vuote
+df <- df %>%
+  mutate(Outlet_Size = if_else(nchar(Outlet_Size) == 0, "NA", Outlet_Size))
+```
+
+
+Now, we want to convert as factor the columns "Item_Fat_Content" giving 0 to "Low Fat" and 1 to "Regular".
+And we also want to convert the column Outlet_Size:
+  1->Small
+  2->Medium
+  3->Large
+
+```{r factor converting}
+
+# Conversione di 'Outlet_Size' in valori numerici
+df <- df %>%
+  mutate(Outlet_Size = case_when(
+    Outlet_Size == "Small" ~ 1,
+    Outlet_Size == "Medium" ~ 2,
+    Outlet_Size == "Large" ~ 3,
+    TRUE ~ NA_real_  # Imposta NA per qualsiasi altro valore non specificato
+  ))
+
+df <- df%>%
+  mutate(Item_Fat_Content = case_when(
+    Item_Fat_Content == "Low Fat" ~ 1,
+    Item_Fat_Content == "Regular Fat" ~ 2,
+    TRUE ~ NA_real_
+  ))
+head(df)
+```
+```{r count 0 values}
+# Find the number of zero 'Item_Visibility' values for each 'Outlet_Identifier'
+zero_visibility_counts <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df, function(x) sum(x == 0))
+
+# Rename the column for better understanding
+names(zero_visibility_counts)[2] <- "Zero_Item_Visibility_Count"
+
+# Display the result
+print(zero_visibility_counts)
+```
+
+```{r count 0 values for each store}
+
+visibility_sum_per_store <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df, sum)
+names(visibility_sum_per_store)[2] <- "Total_Item_Visibility"
+
+# Display the result
+print(visibility_sum_per_store)
+```
+
+```{r total item visibility}
+total_visibility_per_store <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df[df$Item_Visibility != 0,], sum)
+names(total_visibility_per_store)[2] <- "Total_Item_Visibility"
+```
+
+```{r total item visibility 2}
+remaining_visibility_per_store <- 100 - total_visibility_per_store$Total_Item_Visibility
+remaining_visibility_per_store <- data.frame(Outlet_Identifier = total_visibility_per_store$Outlet_Identifier, Remaining_Visibility = remaining_visibility_per_store)
+```
+
+```{r total item visibility 3}
+zero_visibility_counts <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df, function(x) sum(x == 0))
+names(zero_visibility_counts)[2] <- "Zero_Item_Visibility_Count"
+```
+
+```{r total item visibility 4}
+df <- merge(df, zero_visibility_counts, by = "Outlet_Identifier", all.x = TRUE)
+df <- merge(df, remaining_visibility_per_store, by = "Outlet_Identifier", all.x = TRUE)
+```
+
+```{r total item visibility 5}
+impute_visibility <- function(item_visibility, zero_count, remaining_visibility) {
+  if (item_visibility == 0) {
+    if (is.na(zero_count) || zero_count == 0) {
+      return(0)  # No zeros to replace, retain zero
+    }
+    # Check for negative remaining visibility and set to a small positive number if necessary
+    if (remaining_visibility < 0) {
+      remaining_visibility <- mean(df$Item_Visibility[df$Item_Visibility != 0], na.rm = TRUE)
+    }
+    return(remaining_visibility / zero_count)
+  } else {
+    return(item_visibility)
+  }
+}
+
+# Apply the function to impute zero values
+df$Item_Visibility <- mapply(impute_visibility, 
+                             df$Item_Visibility, 
+                             df$Zero_Item_Visibility_Count, 
+                             df$Remaining_Visibility)
+
+```
+
+```{r total item visibility 6}
+# Calculate the sum of Item_Visibility for each Outlet_Identifier to verify
+visibility_sum_per_store <- aggregate(Item_Visibility ~ Outlet_Identifier, data = df, sum)
+names(visibility_sum_per_store)[2] <- "Total_Item_Visibility"
+
+# Display the result
+print(visibility_sum_per_store)
+```
+
+
+
 
