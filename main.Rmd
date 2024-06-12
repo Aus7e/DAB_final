@@ -351,7 +351,10 @@ ggplot(df, aes(x = Item_MRP, y = Item_Outlet_Sales)) +
   geom_point(alpha = 0.5) +
   labs(title = "Relationship between Item MRP and Outlet Sales",
        x = "Item MRP", y = "Outlet Sales")
+#aggiungi i punti per vedere dove sono gli stacchi di prezzo
+
 ```
+
 ```{R item outlet sales by outlet size}
 ggplot(df, aes(x = Outlet_Size, y = Item_Outlet_Sales)) +
   geom_boxplot(aes(fill = Outlet_Size)) +
@@ -366,7 +369,10 @@ ggplot(df, aes(x = Outlet_Establishment_Year, y = Item_Outlet_Sales)) +
   labs(title = "Sales Trends Over the Years",
        x = "Establishment Year", y = "Outlet Sales")
 
+#arriva all'anno del negozio che ha venduto poco, e vedi che negozio è
 ```
+
+
 
 ```{R Relationship between Item MRP and Outlet Sales by Product Type}
 
